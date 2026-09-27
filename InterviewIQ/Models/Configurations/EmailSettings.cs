@@ -1,4 +1,4 @@
-﻿namespace InterviewIQ.Configuration;
+﻿namespace InterviewIQ.Models.Configurations;
 
 public class EmailSettings
 {

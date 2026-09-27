@@ -1,4 +1,4 @@
-﻿using InterviewIQ.Configuration;
+﻿using InterviewIQ.Models.Configurations;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
