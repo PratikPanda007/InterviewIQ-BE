@@ -14,15 +14,18 @@ public class AuthController : ControllerBase
     private readonly InterviewIQDbContext _context;
     private readonly PasswordService _passwordService;
     private readonly IEmailService _emailService;
+    private readonly JwtService _jwtService;
 
     public AuthController(
         InterviewIQDbContext context,
         PasswordService passwordService,
-        IEmailService emailService)
+        IEmailService emailService,
+        JwtService jwtService)
     {
         _context = context;
         _passwordService = passwordService;
         _emailService = emailService;
+        _jwtService = jwtService;
     }
 
     [HttpPost("register")]
@@ -68,6 +71,51 @@ public class AuthController : ControllerBase
         {
             message = "Registration successful.",
             userId = user.Id
+        });
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login(LoginRequest request)
+    {
+        var email = request.Email.Trim().ToLower();
+
+        var user = await _context.Users
+            .Include(x => x.Role)
+            .FirstOrDefaultAsync(x => x.Email == email);
+
+        if (user == null || user.IsActive != 1)
+        {
+            return Unauthorized(new
+            {
+                message = "Invalid email or password."
+            });
+        }
+
+        var isPasswordValid = _passwordService.VerifyPassword(
+            request.Password,
+            user.PasswordHash);
+
+        if (!isPasswordValid)
+        {
+            return Unauthorized(new
+            {
+                message = "Invalid email or password."
+            });
+        }
+
+        var token = _jwtService.GenerateToken(user);
+
+        return Ok(new
+        {
+            message = "Login successful.",
+            token,
+            user = new
+            {
+                id = user.Id,
+                fullName = user.FullName,
+                email = user.Email,
+                role = user.Role.Name
+            }
         });
     }
 }
