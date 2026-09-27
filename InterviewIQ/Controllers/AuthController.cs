@@ -15,17 +15,20 @@ public class AuthController : ControllerBase
     private readonly PasswordService _passwordService;
     private readonly IEmailService _emailService;
     private readonly JwtService _jwtService;
+    private readonly RefreshTokenService _refreshTokenService;
 
     public AuthController(
         InterviewIQDbContext context,
         PasswordService passwordService,
         IEmailService emailService,
-        JwtService jwtService)
+        JwtService jwtService,
+        RefreshTokenService refreshTokenService)
     {
         _context = context;
         _passwordService = passwordService;
         _emailService = emailService;
         _jwtService = jwtService;
+        _refreshTokenService = refreshTokenService;
     }
 
     [HttpPost("register")]
@@ -103,12 +106,19 @@ public class AuthController : ControllerBase
             });
         }
 
-        var token = _jwtService.GenerateToken(user);
+        var accessToken = _jwtService.GenerateToken(user);
+
+        var refreshToken = _refreshTokenService.GenerateToken(user.Id);
+
+        _context.RefreshTokens.Add(refreshToken);
+
+        await _context.SaveChangesAsync();
 
         return Ok(new
         {
             message = "Login successful.",
-            token,
+            accessToken,
+            refreshToken = refreshToken.Token,
             user = new
             {
                 id = user.Id,

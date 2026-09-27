@@ -58,6 +58,12 @@ builder.Services
         };
     });
 
+// Refresh Token
+builder.Services.Configure<RefreshTokenSettings>(
+    builder.Configuration.GetSection("RefreshTokenSettings"));
+
+builder.Services.AddScoped<RefreshTokenService>();
+
 builder.Services.AddAuthorization();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
