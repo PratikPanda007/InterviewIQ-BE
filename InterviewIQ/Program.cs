@@ -37,6 +37,12 @@ var jwtSettings = builder.Configuration
     ?? throw new InvalidOperationException(
         "JwtSettings configuration is missing.");
 
+// Password Reset
+builder.Services.Configure<FrontendSettings>(
+    builder.Configuration.GetSection("FrontendSettings"));
+
+builder.Services.AddScoped<PasswordResetService>();
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

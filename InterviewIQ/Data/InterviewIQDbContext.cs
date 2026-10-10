@@ -14,6 +14,8 @@ public class InterviewIQDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens
+    => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,6 +80,25 @@ public class InterviewIQDbContext : DbContext
 
             entity.HasOne(x => x.User)
                 .WithMany(x => x.RefreshTokens)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.ToTable("IQ_PasswordResetTokens");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.TokenHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.HasIndex(x => x.TokenHash)
+                .IsUnique();
+
+            entity.HasOne(x => x.User)
+                .WithMany()
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
