@@ -290,68 +290,68 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("reset-password")]
-    public async Task<IActionResult> ResetPassword(
+public async Task<IActionResult> ResetPassword(
     ResetPasswordRequest request)
+{
+    var tokenHash = PasswordResetService.HashToken(request.Token);
+
+    var resetToken = await _context.PasswordResetTokens
+        .FirstOrDefaultAsync(x => x.TokenHash == tokenHash);
+
+    if (resetToken == null ||
+        resetToken.IsActive != 1 ||
+        resetToken.UsedAt.HasValue ||
+        resetToken.ExpiresAt <= DateTime.UtcNow)
     {
-        var tokenHash = PasswordResetService.HashToken(request.Token);
-
-        var resetToken = await _context.PasswordResetTokens
-            .FirstOrDefaultAsync(x => x.TokenHash == tokenHash);
-
-        if (resetToken == null ||
-            resetToken.IsActive != 1 ||
-            resetToken.UsedAt.HasValue ||
-            resetToken.ExpiresAt <= DateTime.UtcNow)
+        return BadRequest(new
         {
-            return BadRequest(new
-            {
-                message = "This password reset link is invalid or has expired."
-            });
-        }
-
-        var user = await _context.Users
-            .FirstOrDefaultAsync(x =>
-                x.Id == resetToken.UserId && x.IsActive == 1);
-
-        if (user == null)
-        {
-            return BadRequest(new
-            {
-                message = "This password reset link is invalid or has expired."
-            });
-        }
-
-        var now = DateTime.UtcNow;
-
-        user.PasswordHash =
-            _passwordService.HashPassword(request.NewPassword);
-
-        user.UpdatedBy = user.Id;
-        user.UpdatedDate = now;
-
-        resetToken.UsedAt = now;
-        resetToken.IsActive = 0;
-        resetToken.UpdatedBy = user.Id;
-        resetToken.UpdatedDate = now;
-
-        // Revoke all refresh tokens for this user.
-        var activeRefreshTokens = await _context.RefreshTokens
-            .Where(x => x.UserId == user.Id && x.IsActive == 1)
-            .ToListAsync();
-
-        foreach (var refreshToken in activeRefreshTokens)
-        {
-            refreshToken.IsActive = 0;
-            refreshToken.RevokedAt = now;
-            refreshToken.UpdatedBy = user.Id;
-            refreshToken.UpdatedDate = now;
-        }
-
-        await _context.SaveChangesAsync();
-
-        return Ok(new
-        {
-            message = "Password reset successfully. Please log in with your new password."
+            message = "This password reset link is invalid or has expired."
         });
     }
+
+    var user = await _context.Users
+        .FirstOrDefaultAsync(x =>
+            x.Id == resetToken.UserId && x.IsActive == 1);
+
+    if (user == null)
+    {
+        return BadRequest(new
+        {
+            message = "This password reset link is invalid or has expired."
+        });
+    }
+
+    var now = DateTime.UtcNow;
+
+    user.PasswordHash =
+        _passwordService.HashPassword(request.NewPassword);
+
+    user.UpdatedBy = user.Id;
+    user.UpdatedDate = now;
+
+    resetToken.UsedAt = now;
+    resetToken.IsActive = 0;
+    resetToken.UpdatedBy = user.Id;
+    resetToken.UpdatedDate = now;
+
+    // Revoke all refresh tokens for this user.
+    var activeRefreshTokens = await _context.RefreshTokens
+        .Where(x => x.UserId == user.Id && x.IsActive == 1)
+        .ToListAsync();
+
+    foreach (var refreshToken in activeRefreshTokens)
+    {
+        refreshToken.IsActive = 0;
+        refreshToken.RevokedAt = now;
+        refreshToken.UpdatedBy = user.Id;
+        refreshToken.UpdatedDate = now;
+    }
+
+    await _context.SaveChangesAsync();
+
+    return Ok(new
+    {
+        message = "Password reset successfully. Please log in with your new password."
+    });
+}
 }
