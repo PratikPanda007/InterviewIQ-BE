@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using InterviewIQ.Models.UserQuota;
 
 namespace InterviewIQ.Controllers
 {
@@ -290,7 +291,6 @@ namespace InterviewIQ.Controllers
         }
 
 
-        // POST: api/interview-sessions/{id}/start
         [HttpPost("{id:int}/start")]
         public async Task<IActionResult> StartInterview(int id)
         {
@@ -300,94 +300,214 @@ namespace InterviewIQ.Controllers
 
             if (!int.TryParse(userIdClaim, out var userId))
             {
-                return Unauthorized(new
-                {
-                    message = "Invalid user identity."
-                });
+                return Unauthorized(new { message = "Invalid user identity." });
             }
 
             await using var transaction =
-                await _context.Database.BeginTransactionAsync();
+                await _context.Database.BeginTransactionAsync(
+                    System.Data.IsolationLevel.Serializable);
 
-            // Verify ownership and session status.
-            var session = await _context.InterviewSessions
-                .FirstOrDefaultAsync(x =>
-                    x.Id == id &&
-                    x.UserId == userId &&
-                    x.IsActive == 1);
-
-            if (session == null)
+            try
             {
-                return NotFound(new
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(x =>
+                        x.Id == userId && x.IsActive == 1);
+
+                if (user == null)
                 {
-                    message = "Interview session not found."
+                    await transaction.RollbackAsync();
+                    return Unauthorized(new
+                    {
+                        message = "User account is unavailable."
+                    });
+                }
+
+                var session = await _context.InterviewSessions
+                    .FirstOrDefaultAsync(x =>
+                        x.Id == id &&
+                        x.UserId == userId &&
+                        x.IsActive == 1);
+
+                if (session == null)
+                {
+                    await transaction.RollbackAsync();
+                    return NotFound(new
+                    {
+                        message = "Interview session not found."
+                    });
+                }
+
+                if (session.Status != "Created")
+                {
+                    await transaction.RollbackAsync();
+                    return Conflict(new
+                    {
+                        message = "Only a newly created session can be started.",
+                        currentStatus = session.Status
+                    });
+                }
+
+                var now = DateTime.UtcNow;
+
+                // India has no daylight-saving time.
+                var istNow = TimeZoneInfo.ConvertTimeFromUtc(
+                    now,
+                    TimeZoneInfo.FindSystemTimeZoneById(
+                        OperatingSystem.IsWindows()
+                            ? "India Standard Time"
+                            : "Asia/Kolkata"));
+
+                string usageSource;
+                int? remainingFreeInterviews = null;
+                int? paidCreditsRemaining = null;
+
+                bool usePaidCredit = false;
+
+                switch (user.RoleId)
+                {
+                    case 1:
+                        // Super Admin: unlimited interviews.
+                        usageSource = "SuperAdminUnlimited";
+                        break;
+
+                    case 2:
+                        {
+                            // Admin: five free interviews per IST calendar month.
+                            var usage = await _context.UserMonthlyUsages
+                                .FirstOrDefaultAsync(x =>
+                                    x.UserId == userId &&
+                                    x.Year == istNow.Year &&
+                                    x.Month == istNow.Month);
+
+                            if (usage == null)
+                            {
+                                usage = new UserMonthlyUsage
+                                {
+                                    UserId = userId,
+                                    Year = istNow.Year,
+                                    Month = istNow.Month,
+                                    FreeInterviewsUsed = 0,
+                                    IsActive = 1,
+                                    CreatedBy = userId,
+                                    CreatedDate = now,
+                                    UpdatedBy = userId,
+                                    UpdatedDate = now
+                                };
+
+                                _context.UserMonthlyUsages.Add(usage);
+                            }
+
+                            if (usage.FreeInterviewsUsed < 5)
+                            {
+                                usage.FreeInterviewsUsed++;
+                                usage.IsActive = 1;
+                                usage.UpdatedBy = userId;
+                                usage.UpdatedDate = now;
+
+                                remainingFreeInterviews =
+                                    5 - usage.FreeInterviewsUsed;
+
+                                usageSource = "MonthlyFree";
+                            }
+                            else
+                            {
+                                usePaidCredit = true;
+                                usageSource = "PaidCredit";
+                            }
+
+                            break;
+                        }
+
+                    case 3:
+                        // User: one lifetime free interview.
+                        if (user.IsFreeTrialUsed == 0)
+                        {
+                            user.IsFreeTrialUsed = 1;
+                            user.FreeInterviewsUsed++;
+                            user.UpdatedBy = userId;
+                            user.UpdatedDate = now;
+
+                            remainingFreeInterviews = 0;
+                            usageSource = "LifetimeFree";
+                        }
+                        else
+                        {
+                            usePaidCredit = true;
+                            usageSource = "PaidCredit";
+                        }
+
+                        break;
+
+                    default:
+                        await transaction.RollbackAsync();
+                        return Forbid();
+                }
+
+                if (usePaidCredit)
+                {
+                    // Purchased credits remain valid after subscription expiry.
+                    // Consume the oldest available credit first.
+                    var credit = await _context.UserInterviewCredits
+                        .Where(x =>
+                            x.UserId == userId &&
+                            x.IsActive == 1 &&
+                            x.RemainingCredits > 0)
+                        .OrderBy(x => x.CreatedDate)
+                        .ThenBy(x => x.Id)
+                        .FirstOrDefaultAsync();
+
+                    if (credit == null)
+                    {
+                        await transaction.RollbackAsync();
+
+                        return StatusCode(
+                            StatusCodes.Status403Forbidden,
+                            new
+                            {
+                                message =
+                                    "No free interviews or paid credits remain.",
+                                roleId = user.RoleId
+                            });
+                    }
+
+                    credit.RemainingCredits--;
+                    credit.UpdatedBy = userId;
+                    credit.UpdatedDate = now;
+
+                    paidCreditsRemaining = credit.RemainingCredits;
+                    usageSource = "PaidCredit";
+                }
+
+                session.Status = "InProgress";
+                session.UpdatedBy = userId;
+                session.UpdatedDate = now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new
+                {
+                    message = "Interview started successfully.",
+                    sessionId = session.Id,
+                    status = session.Status,
+                    usageSource,
+                    remainingFreeInterviews,
+                    paidCreditsRemaining,
+                    startedAt = now
                 });
             }
-
-            if (session.Status != "Created")
-            {
-                return Conflict(new
-                {
-                    message = "Only a newly created session can be started.",
-                    currentStatus = session.Status
-                });
-            }
-
-            var now = DateTime.UtcNow;
-
-            // Atomically claim the user's one-time free trial.
-            var trialClaimed = await _context.Users
-                .Where(x =>
-                    x.Id == userId &&
-                    x.IsActive == 1 &&
-                    x.IsFreeTrialUsed == 0)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(x => x.IsFreeTrialUsed, 1)
-                    .SetProperty(x => x.UpdatedBy, userId)
-                    .SetProperty(x => x.UpdatedDate, now));
-
-            if (trialClaimed == 0)
+            catch (Exception)
             {
                 await transaction.RollbackAsync();
 
-                return StatusCode(403, new
-                {
-                    message =
-                        "Your free interview has already been used. Please subscribe to continue."
-                });
+                // Log the exception through your configured logger in production.
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    new
+                    {
+                        message = "Unable to start the interview. Please try again."
+                    });
             }
-
-            // Start the session only if it is still in Created status.
-            var sessionStarted = await _context.InterviewSessions
-                .Where(x =>
-                    x.Id == id &&
-                    x.UserId == userId &&
-                    x.IsActive == 1 &&
-                    x.Status == "Created")
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(x => x.Status, "InProgress")
-                    .SetProperty(x => x.UpdatedBy, userId)
-                    .SetProperty(x => x.UpdatedDate, now));
-
-            if (sessionStarted == 0)
-            {
-                await transaction.RollbackAsync();
-
-                return Conflict(new
-                {
-                    message = "The interview session could not be started."
-                });
-            }
-
-            await transaction.CommitAsync();
-
-            return Ok(new
-            {
-                message = "Interview started successfully.",
-                sessionId = id,
-                status = "InProgress",
-                startedAt = now
-            });
         }
     }
 }
