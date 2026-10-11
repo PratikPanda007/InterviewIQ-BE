@@ -1,5 +1,6 @@
 ﻿using InterviewIQ.Models.Entities;
 using InterviewIQ.Models.Interviews;
+using InterviewIQ.Models.UserQuota;
 using Microsoft.EntityFrameworkCore;
 
 namespace InterviewIQ.Data;
@@ -16,24 +17,24 @@ public class InterviewIQDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
-    public DbSet<PasswordResetToken> PasswordResetTokens
-    => Set<PasswordResetToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     // Interviews
     public DbSet<InterviewDomain> InterviewDomains => Set<InterviewDomain>();
-
     public DbSet<Topic> Topics => Set<Topic>();
-
     public DbSet<InterviewDifficulty> InterviewDifficulties => Set<InterviewDifficulty>();
-
     public DbSet<InterviewDuration> InterviewDurations => Set<InterviewDuration>();
-
     public DbSet<InterviewerPersona> InterviewerPersonas => Set<InterviewerPersona>();
 
     // Interviews
     public DbSet<InterviewSession> InterviewSessions => Set<InterviewSession>();
-
     public DbSet<InterviewSessionTopic> InterviewSessionTopics => Set<InterviewSessionTopic>();
+
+    // User Quotas
+    public DbSet<UserMonthlyUsage> UserMonthlyUsages => Set<UserMonthlyUsage>();
+    public DbSet<UserInterviewCredits> UserInterviewCredits => Set<UserInterviewCredits>();
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -265,6 +266,138 @@ public class InterviewIQDbContext : DbContext
             entity.HasOne(x => x.Topic)
                 .WithMany()
                 .HasForeignKey(x => x.TopicId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+
+        modelBuilder.Entity<UserMonthlyUsage>(entity =>
+        {
+            entity.ToTable("IQ_UserMonthlyUsage");
+
+            entity.HasKey(x => x.Id);
+
+            entity.HasIndex(x => new { x.UserId, x.Year, x.Month })
+                .IsUnique();
+
+            entity.HasCheckConstraint(
+                "CK_IQ_UserMonthlyUsage_Month",
+                "[Month] BETWEEN 1 AND 12");
+
+            entity.HasCheckConstraint(
+                "CK_IQ_UserMonthlyUsage_FreeInterviewsUsed",
+                "[FreeInterviewsUsed] >= 0");
+
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserInterviewCredits>(entity =>
+        {
+            entity.ToTable("IQ_UserInterviewCredits", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_IQ_UserInterviewCredits_Balances",
+                    "[GrantedCredits] > 0 AND [RemainingCredits] >= 0 " +
+                    "AND [RemainingCredits] <= [GrantedCredits]");
+            });
+
+            entity.HasKey(x => x.Id);
+
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<PaymentTransaction>()
+                .WithMany()
+                .HasForeignKey(x => x.PaymentTransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Subscription>(entity =>
+        {
+            entity.ToTable("IQ_Subscriptions");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.PlanName)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(x => x.CurrencyCode)
+                .IsRequired()
+                .HasMaxLength(3)
+                .IsUnicode(false);
+
+            entity.Property(x => x.PriceAmount)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.Status)
+                .IsRequired()
+                .HasMaxLength(30);
+
+            entity.Property(x => x.ProviderSubscriptionId)
+                .HasMaxLength(150);
+
+            entity.HasIndex(x => x.ProviderSubscriptionId)
+                .IsUnique()
+                .HasFilter("[ProviderSubscriptionId] IS NOT NULL");
+
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PaymentTransaction>(entity =>
+        {
+            entity.ToTable("IQ_PaymentTransactions");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Provider)
+                .IsRequired()
+                .HasMaxLength(30);
+
+            entity.Property(x => x.CurrencyCode)
+                .IsRequired()
+                .HasMaxLength(3)
+                .IsUnicode(false);
+
+            entity.Property(x => x.Amount)
+                .HasPrecision(18, 2);
+
+            entity.Property(x => x.Status)
+                .IsRequired()
+                .HasMaxLength(30);
+
+            entity.Property(x => x.ProviderOrderId)
+                .HasMaxLength(150);
+
+            entity.Property(x => x.ProviderPaymentId)
+                .HasMaxLength(150);
+
+            entity.Property(x => x.IdempotencyKey)
+                .HasMaxLength(150);
+
+            entity.HasIndex(x => x.ProviderPaymentId)
+                .IsUnique()
+                .HasFilter("[ProviderPaymentId] IS NOT NULL");
+
+            entity.HasIndex(x => x.IdempotencyKey)
+                .IsUnique()
+                .HasFilter("[IdempotencyKey] IS NOT NULL");
+
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Subscription)
+                .WithMany()
+                .HasForeignKey(x => x.SubscriptionId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

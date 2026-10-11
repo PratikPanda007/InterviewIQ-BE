@@ -742,6 +742,9 @@ namespace InterviewIQ.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<int>("FreeInterviewsUsed")
+                        .HasColumnType("int");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -877,6 +880,252 @@ namespace InterviewIQ.Migrations
                     b.ToTable("IQ_InterviewSessionTopics", (string)null);
                 });
 
+            modelBuilder.Entity("InterviewIQ.Models.UserQuota.PaymentTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("IsActive")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ProviderOrderId")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("ProviderPaymentId")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("SubscriptionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("[IdempotencyKey] IS NOT NULL");
+
+                    b.HasIndex("ProviderPaymentId")
+                        .IsUnique()
+                        .HasFilter("[ProviderPaymentId] IS NOT NULL");
+
+                    b.HasIndex("SubscriptionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("IQ_PaymentTransactions", (string)null);
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.UserQuota.Subscription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<DateTime>("CurrentPeriodEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CurrentPeriodStart")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("InterviewCreditsGranted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IsActive")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PlanName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("PriceAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ProviderSubscriptionId")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderSubscriptionId")
+                        .IsUnique()
+                        .HasFilter("[ProviderSubscriptionId] IS NOT NULL");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("IQ_Subscriptions", (string)null);
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.UserQuota.UserInterviewCredits", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("GrantedCredits")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IsActive")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PaymentTransactionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RemainingCredits")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PaymentTransactionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("IQ_UserInterviewCredits", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_IQ_UserInterviewCredits_Balances", "[GrantedCredits] > 0 AND [RemainingCredits] >= 0 AND [RemainingCredits] <= [GrantedCredits]");
+                        });
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.UserQuota.UserMonthlyUsage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FreeInterviewsUsed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IsActive")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("IQ_UserMonthlyUsage", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_IQ_UserMonthlyUsage_FreeInterviewsUsed", "[FreeInterviewsUsed] >= 0");
+
+                            t.HasCheckConstraint("CK_IQ_UserMonthlyUsage_Month", "[Month] BETWEEN 1 AND 12");
+                        });
+                });
+
             modelBuilder.Entity("InterviewIQ.Models.Entities.PasswordResetToken", b =>
                 {
                     b.HasOne("InterviewIQ.Models.Entities.User", "User")
@@ -981,6 +1230,62 @@ namespace InterviewIQ.Migrations
                     b.Navigation("InterviewSession");
 
                     b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.UserQuota.PaymentTransaction", b =>
+                {
+                    b.HasOne("InterviewIQ.Models.UserQuota.Subscription", "Subscription")
+                        .WithMany()
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("InterviewIQ.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Subscription");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.UserQuota.Subscription", b =>
+                {
+                    b.HasOne("InterviewIQ.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.UserQuota.UserInterviewCredits", b =>
+                {
+                    b.HasOne("InterviewIQ.Models.UserQuota.PaymentTransaction", null)
+                        .WithMany()
+                        .HasForeignKey("PaymentTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("InterviewIQ.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.UserQuota.UserMonthlyUsage", b =>
+                {
+                    b.HasOne("InterviewIQ.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("InterviewIQ.Models.Entities.InterviewDomain", b =>

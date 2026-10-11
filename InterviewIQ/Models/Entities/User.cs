@@ -15,6 +15,7 @@ public class User
     public ICollection<RefreshToken> RefreshTokens { get; set; }
         = new List<RefreshToken>();
     public int IsFreeTrialUsed { get; set; } = 0;
+    public int FreeInterviewsUsed { get; set; } = 0;
     public int IsActive { get; set; } = 1;
     public int CreatedBy { get; set; }
     public DateTime CreatedDate { get; set; }
