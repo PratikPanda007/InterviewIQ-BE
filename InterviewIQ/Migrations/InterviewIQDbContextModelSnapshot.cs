@@ -780,6 +780,103 @@ namespace InterviewIQ.Migrations
                     b.ToTable("IQ_Users", (string)null);
                 });
 
+            modelBuilder.Entity("InterviewIQ.Models.Interviews.InterviewSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DifficultyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DomainId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DurationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IsActive")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PersonaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DifficultyId");
+
+                    b.HasIndex("DomainId");
+
+                    b.HasIndex("DurationId");
+
+                    b.HasIndex("PersonaId");
+
+                    b.HasIndex("UserId", "CreatedDate");
+
+                    b.ToTable("IQ_InterviewSessions", (string)null);
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.Interviews.InterviewSessionTopic", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("InterviewSessionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IsActive")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TopicId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TopicId");
+
+                    b.HasIndex("InterviewSessionId", "TopicId")
+                        .IsUnique();
+
+                    b.ToTable("IQ_InterviewSessionTopics", (string)null);
+                });
+
             modelBuilder.Entity("InterviewIQ.Models.Entities.PasswordResetToken", b =>
                 {
                     b.HasOne("InterviewIQ.Models.Entities.User", "User")
@@ -824,6 +921,68 @@ namespace InterviewIQ.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("InterviewIQ.Models.Interviews.InterviewSession", b =>
+                {
+                    b.HasOne("InterviewIQ.Models.Entities.InterviewDifficulty", "Difficulty")
+                        .WithMany()
+                        .HasForeignKey("DifficultyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InterviewIQ.Models.Entities.InterviewDomain", "Domain")
+                        .WithMany()
+                        .HasForeignKey("DomainId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InterviewIQ.Models.Entities.InterviewDuration", "Duration")
+                        .WithMany()
+                        .HasForeignKey("DurationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InterviewIQ.Models.Entities.InterviewerPersona", "Persona")
+                        .WithMany()
+                        .HasForeignKey("PersonaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InterviewIQ.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Difficulty");
+
+                    b.Navigation("Domain");
+
+                    b.Navigation("Duration");
+
+                    b.Navigation("Persona");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.Interviews.InterviewSessionTopic", b =>
+                {
+                    b.HasOne("InterviewIQ.Models.Interviews.InterviewSession", "InterviewSession")
+                        .WithMany("SessionTopics")
+                        .HasForeignKey("InterviewSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("InterviewIQ.Models.Entities.Topic", "Topic")
+                        .WithMany()
+                        .HasForeignKey("TopicId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("InterviewSession");
+
+                    b.Navigation("Topic");
+                });
+
             modelBuilder.Entity("InterviewIQ.Models.Entities.InterviewDomain", b =>
                 {
                     b.Navigation("Topics");
@@ -837,6 +996,11 @@ namespace InterviewIQ.Migrations
             modelBuilder.Entity("InterviewIQ.Models.Entities.User", b =>
                 {
                     b.Navigation("RefreshTokens");
+                });
+
+            modelBuilder.Entity("InterviewIQ.Models.Interviews.InterviewSession", b =>
+                {
+                    b.Navigation("SessionTopics");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,4 +1,5 @@
 ﻿using InterviewIQ.Models.Entities;
+using InterviewIQ.Models.Interviews;
 using Microsoft.EntityFrameworkCore;
 
 namespace InterviewIQ.Data;
@@ -28,6 +29,12 @@ public class InterviewIQDbContext : DbContext
     public DbSet<InterviewDuration> InterviewDurations => Set<InterviewDuration>();
 
     public DbSet<InterviewerPersona> InterviewerPersonas => Set<InterviewerPersona>();
+
+    // Interviews
+    public DbSet<InterviewSession> InterviewSessions => Set<InterviewSession>();
+
+    public DbSet<InterviewSessionTopic> InterviewSessionTopics => Set<InterviewSessionTopic>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -198,7 +205,70 @@ public class InterviewIQDbContext : DbContext
                 .IsUnique();
         });
 
-        // Initial Roles
+        // Interviews
+
+        modelBuilder.Entity<InterviewSession>(entity =>
+        {
+            entity.ToTable("IQ_InterviewSessions");
+
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Status)
+                .IsRequired()
+                .HasMaxLength(30);
+
+            entity.HasIndex(x => new { x.UserId, x.CreatedDate });
+
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Domain)
+                .WithMany()
+                .HasForeignKey(x => x.DomainId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Difficulty)
+                .WithMany()
+                .HasForeignKey(x => x.DifficultyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Duration)
+                .WithMany()
+                .HasForeignKey(x => x.DurationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Persona)
+                .WithMany()
+                .HasForeignKey(x => x.PersonaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<InterviewSessionTopic>(entity =>
+        {
+            entity.ToTable("IQ_InterviewSessionTopics");
+
+            entity.HasKey(x => x.Id);
+
+            entity.HasIndex(x => new
+            {
+                x.InterviewSessionId,
+                x.TopicId
+            }).IsUnique();
+
+            entity.HasOne(x => x.InterviewSession)
+                .WithMany(x => x.SessionTopics)
+                .HasForeignKey(x => x.InterviewSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.Topic)
+                .WithMany()
+                .HasForeignKey(x => x.TopicId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Seed Initial Roles
         modelBuilder.Entity<Role>().HasData(
              new Role
              {
